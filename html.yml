@@ -1,0 +1,114 @@
+---
+- hosts: webservers
+  user: osboxes
+  vars:
+    httpd_Listen_ssl: 443
+    httpd_Listen: 80
+    apache_user: root
+    apache_group: root
+    httpd_SSLProtocol: "SSLProtocol all -SSLv2 -SSLv3 -TLSv1 -TLSv1.1"
+    httpd_ServerRoot: /etc/httpd
+    httpd_LogRoot: /var/log/weblogs/http
+    httpd_AccessLog: /var/log/weblogs/http/_access_log
+    httpd_AccessLog_ssl: /var/log/weblogs/http/ssl_access_log
+    httpd_ErrorLog: /var/log/weblogs/http/error_log
+    httpd_ErrorLog_ssl: /var/log/weblogs/http/ssl_error_log
+    httpd_RequestLog: /var/log/weblogs/http/ssl_request_log
+    httpd_DocumentRoot: /apps/hello-http/html
+    httpd_config: /etc/httpd/conf/httpd.conf
+    httpd_ssl_config: /etc/httpd/conf.d/ssl.conf
+    httpd_LogLevel: warn
+
+  tasks:
+  - name: Installing/Verifying Latest version of Apache
+    sudo: yes
+    yum: pkg=httpd state=latest
+    yum: pkg=mod_ssl state=latest
+    notify:
+    - start apache
+
+  - name: create doc root directory
+    sudo: yes
+    file: 
+      path: /apps/hello-http/html
+      owner: "{{ apache_user }}"
+      group: "{{ apache_group }}"
+      setype: httpd_sys_rw_content_t
+      mode: '0755'
+      state: directory
+
+  - name: create log directory
+    sudo: yes
+    file: 
+      path: "{{ httpd_LogRoot }}"
+      owner: "{{ apache_user }}"
+      group: "{{ apache_group }}"
+      setype: httpd_log_t
+      mode: '0755'
+      state: directory
+
+  - name: Copying the demo hello.html file
+    sudo: yes
+    template: 
+      src: /etc/ansible/hello.html 
+      dest: /apps/hello-http/html/hello.html
+      owner: "{{ apache_user }}"
+      group: "{{ apache_group }}"
+      setype: httpd_sys_rw_content_t
+      mode: '0644'
+    notify:
+    - restart apache
+
+  - name: (Enable Apache on System Boot)
+    sudo: yes
+    service: name=httpd enabled=yes
+
+  - name: Install main configuration file
+    sudo: yes
+    template:
+      src: templates/httpd.conf.j2
+      dest: "{{ httpd_config }}"
+      owner: "{{ apache_user }}"
+      group: "{{ apache_group }}"
+      setype: httpd_config_t
+      mode: '0644'
+    notify: restart apache
+    tags: httpd
+
+  - name: Install mod_ssl configuration file
+    sudo: yes
+    template:
+      src: templates/ssl.conf.j2
+      dest: "{{ httpd_ssl_config }}"
+      owner: "{{ apache_user }}"
+      group: "{{ apache_group }}"
+      setype: httpd_config_t
+      mode: '0644'
+    notify: restart apache
+    tags: httpd
+
+  - name: Set dmz as default policy
+    sudo: yes
+    command: firewall-cmd --set-default-zone=dmz
+
+  - name: Allow http/https
+    sudo: yes
+    command: firewall-cmd --zone=dmz --permanent --add-service=http --add-service=https
+    notify: restart firewalld
+
+  handlers:
+  - name: start apache
+    sudo: yes
+    service: name=httpd state=started
+
+  - name: restart apache
+    sudo: yes
+    service:
+      name: httpd
+      state: restarted
+
+  - name: restart firewalld
+    sudo: yes
+    service:
+      name: firewalld
+      state: restarted

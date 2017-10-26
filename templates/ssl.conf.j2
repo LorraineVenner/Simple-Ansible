@@ -1,0 +1,76 @@
+
+# Apache TLS configuration
+#
+# {{ ansible_managed }}
+
+# Listen on port
+Listen {{ httpd_Listen_ssl }} https
+
+## SSL Global Context
+SSLPassPhraseDialog exec:/usr/libexec/httpd-ssl-pass-dialog
+SSLSessionCache         shmcb:/run/httpd/sslcache(512000)
+SSLSessionCacheTimeout  300
+SSLRandomSeed startup file:/dev/urandom  256
+SSLRandomSeed connect builtin
+SSLCryptoDevice builtin
+
+## SSL Virtual Host Context
+<VirtualHost _default_:{{ httpd_Listen_ssl }}>
+
+ErrorLog {{ httpd_ErrorLog_ssl }}
+TransferLog {{ httpd_AccessLog }}
+LogLevel warn
+
+SSLEngine on
+{% if httpd_SSLProtocol is defined %}
+ {{ httpd_SSLProtocol }}
+{% endif %}
+#   SSL Cipher Suite:
+#   List the ciphers that the client is permitted to negotiate.
+#   See the mod_ssl documentation for a complete list.
+SSLCipherSuite HIGH:MEDIUM:!aNULL:!MD5:!SEED:!IDEA
+
+#   Speed-optimized SSL Cipher configuration:
+#   If speed is your main concern (on busy HTTPS servers e.g.),
+#   you might want to force clients to specific, performance
+#   optimized ciphers. In this case, prepend those ciphers
+#   to the SSLCipherSuite list, and enable SSLHonorCipherOrder.
+#   Caveat: by giving precedence to RC4-SHA and AES128-SHA
+#   (as in the example below), most connections will no longer
+#   have perfect forward secrecy - if the server's key is
+#   compromised, captures of past or future traffic must be
+#   considered compromised, too.
+#SSLCipherSuite RC4-SHA:AES128-SHA:HIGH:MEDIUM:!aNULL:!MD5
+#SSLHonorCipherOrder on 
+
+
+# Certificate files
+SSLCertificateFile /etc/pki/tls/certs/localhost.crt
+SSLCertificateKeyFile /etc/pki/tls/private/localhost.key
+#   Point SSLCertificateChainFile at a file containing the
+#   the referenced file can be the same as SSLCertificateFile
+#SSLCertificateChainFile /etc/pki/tls/certs/server-chain.crt
+#SSLCACertificateFile /etc/pki/tls/certs/ca-bundle.crt
+
+{% if httpd_SSLCertificateChainFile is defined %}
+SSLCertificateChainFile {{ httpd_SSLCertificateChainFile }}
+{% endif %}
+{% if httpd_SSLCACertificateFile is defined %}
+SSLCACertificateFile {{ httpd_SSLCACertificateFile }}
+{% endif %}
+
+<Files ~ "\.(cgi|shtml|html|phtml|php3?)$">
+    SSLOptions +StdEnvVars
+</Files>
+<Directory "{{ httpd_DocumentRoot }}">
+    SSLOptions +StdEnvVars
+</Directory>
+
+BrowserMatch "MSIE [2-5]" \
+         nokeepalive ssl-unclean-shutdown \
+         downgrade-1.0 force-response-1.0
+
+CustomLog {{ httpd_RequestLog }} \
+          "%t %h %{SSL_PROTOCOL}x %{SSL_CIPHER}x \"%r\" %b"
+
+</VirtualHost>
