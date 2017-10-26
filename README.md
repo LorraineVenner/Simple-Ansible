@@ -31,7 +31,7 @@ Setup:
         if bash is NOT at /bin/bash on management host, update test.sh with correct path
 
 Run:
-        cd Simple-Ansible/install-apache
+        cd Simple-Ansible
         ./test.sh
          
 Notes:
