@@ -3,14 +3,9 @@
 #
 #   README
 #
-#    This is an example on how to automatically install a webserver via ansible
-#      it was an exercise to prove I could automatically install webservers for an interview
-#      Still, it is somewhat useful - and if you don't know ansible may be helpful
-#
-#       How to run webserver installation and verification script
-#       Background
-#
 ##################################################
+
+This is an example on how to automatically install a webserver via ansible
 
 Requirements:
      ansible installed on management host
@@ -50,3 +45,6 @@ Language choice:
          if unfamiliar with ansible.
 
 
+Background:
+    This was an exercise to prove I could automatically install webservers for an interview
+    It is somewhat useful - and if you don't know ansible may be helpful
